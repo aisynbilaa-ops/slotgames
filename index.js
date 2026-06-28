@@ -105,47 +105,6 @@ const initUser = (userId) => {
     }
 };
 
-// Command: /menolaktoxic (Hanya Admin)
-    if (message.content.startsWith('/menolaktoxic')) {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-        
-        const channel = message.mentions.channels.first() || message.channel;
-        antiToxicEnabled[message.guild.id] = channel.id;
-        saveDB(); // Simpan ke file jika perlu
-        return message.reply('**FITUR ANTI TOXIC BERHASIL DI NYALAKAN! ⚠️**');
-    }
-
-    // Deteksi Anti-Toxic
-    if (antiToxicEnabled[message.guild.id] === message.channel.id && 
-        !message.member.permissions.has(PermissionsBitField.Flags.Administrator) && 
-        !message.author.bot) {
-        
-        const content = message.content.toLowerCase();
-        const isToxic = TOXIC_WORDS.some(word => content.includes(word));
-
-        if (isToxic) {
-            const now = Date.now();
-            const userId = message.author.id;
-
-            // Cek apakah user pernah kena peringatan dalam 1 menit terakhir
-            if (warningList[userId] && (now - warningList[userId] < 60000)) {
-                // Timeout user selama 30 menit
-                const reason = TOXIC_REASONS[Math.floor(Math.random() * TOXIC_REASONS.length)];
-                try {
-                    await message.member.timeout(30 * 60 * 1000, reason);
-                    message.channel.send(`<a:anim_punch:1011474831369322496> <@${userId}> has been timed out!\n> **Reason:** ${reason}\n> **Duration:** 30 minutes`);
-                    delete warningList[userId];
-                } catch (err) {
-                    message.reply('❌ gagal melakukan timeout (bot mungkin tidak memiliki izin/posisi role bot rendah).');
-                }
-            } else {
-                // Peringatan pertama
-                warningList[userId] = now;
-                message.reply('WOI, GABOLE TOKSIK GABOLE TOKSIK <a:cats_nomnom_ramble:1517101274443677717>');
-            }
-            return; // Hentikan proses jika pesan toksik
-        }
-    }
 
 // ================= FITUR (COOLDOWN) =================
 const gameCooldowns = new Map();
@@ -293,6 +252,48 @@ if (command === 'csend') {
     });
 }
 
+// Command: /menolaktoxic (Hanya Admin)
+    if (message.content.startsWith('/menolaktoxic')) {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        
+        const channel = message.mentions.channels.first() || message.channel;
+        antiToxicEnabled[message.guild.id] = channel.id;
+        saveDB(); // Simpan ke file jika perlu
+        return message.reply('**FITUR ANTI TOXIC BERHASIL DI NYALAKAN! ⚠️**');
+    }
+
+    // Deteksi Anti-Toxic
+    if (antiToxicEnabled[message.guild.id] === message.channel.id && 
+        !message.member.permissions.has(PermissionsBitField.Flags.Administrator) && 
+        !message.author.bot) {
+        
+        const content = message.content.toLowerCase();
+        const isToxic = TOXIC_WORDS.some(word => content.includes(word));
+
+        if (isToxic) {
+            const now = Date.now();
+            const userId = message.author.id;
+
+            // Cek apakah user pernah kena peringatan dalam 1 menit terakhir
+            if (warningList[userId] && (now - warningList[userId] < 60000)) {
+                // Timeout user selama 30 menit
+                const reason = TOXIC_REASONS[Math.floor(Math.random() * TOXIC_REASONS.length)];
+                try {
+                    await message.member.timeout(30 * 60 * 1000, reason);
+                    message.channel.send(`<a:anim_punch:1011474831369322496> <@${userId}> has been timed out!\n> **Reason:** ${reason}\n> **Duration:** 30 minutes`);
+                    delete warningList[userId];
+                } catch (err) {
+                    message.reply('❌ gagal melakukan timeout (bot mungkin tidak memiliki izin/posisi role bot rendah).');
+                }
+            } else {
+                // Peringatan pertama
+                warningList[userId] = now;
+                message.reply('WOI, GABOLE TOKSIK GABOLE TOKSIK <a:cats_nomnom_ramble:1517101274443677717>');
+            }
+            return; // Hentikan proses jika pesan toksik
+        }
+    }
+    
     // 6. PERMAINAN BLACKJACK
     if (command === 'sbj') {
         let bet = args[1];
