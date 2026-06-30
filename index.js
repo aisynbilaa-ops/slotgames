@@ -357,7 +357,7 @@ client.on('messageCreate', async (message) => {
             await sleep(400);
 
             let dealerCardsCount = 2;
-            while (calculateScore(dealerHand) < 17 && dealerCardsCount < 5) {
+            while (calculateScore(dealerHand) < 21 && dealerCardsCount < 5) {
                 dealerHand.push(drawCard()); 
                 dealerCardsCount++;
                 await msg.edit({ embeds: [generateEmbed('revealing', '#0099ff')] });
