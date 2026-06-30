@@ -304,7 +304,7 @@ client.on('messageCreate', async (message) => {
             const dealerScore = calculateScore(dealerHand);
             const playerEmojis = playerHand.map(c => c.emoji).join(' ');
             
-            let dealerDisplayScore = status === 'playing' ? ``[${dealerHand[0].value}+?]`` : ``[${dealerScore}]``;
+            let dealerDisplayScore = status === 'playing' ? ``[${dealerHand[0].value}+?]` : ``[${dealerScore}]`;
             let dealerEmojis = status === 'playing' ? `${dealerHand[0].emoji} ${EMOJI_CARDBACK}` : dealerHand.map(c => c.emoji).join(' ');
             
             let resultText = '';
