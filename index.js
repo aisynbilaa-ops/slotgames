@@ -1,5 +1,6 @@
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
 const fs = require('fs');
+const { createCanvas } = require('canvas');
 
 // Inisialisasi Bot dengan Intents yang dibutuhkan
 const client = new Client({
@@ -33,7 +34,7 @@ try {
 } catch (error) {
     console.error("Database rusak, mereset ke default...");
     db = { users: {}, channels: [] };
-    saveDB(); // Sekarang saveDB sudah didefinisikan, jadi ini tidak akan error
+    saveDB(); 
 }
 
 // Emoji Setup
@@ -51,7 +52,7 @@ const EMOJI_SLOTS_SPIN = '<a:spin:1519947196483502142>';
 const EMOJI_MONEY = '<:moneyslot:1519946191880720384>';
 
 // Tambahan Anti-Toxic
-let antiToxicEnabled = {}; // Menyimpan channel yang aktif
+let antiToxicEnabled = {}; 
 
 const TOXIC_WORDS = ['anjir', 'babi', 'lonte', 'kimak', 'asu', 'anjing', 'anjr', 'anjing', 'ngentot', 'memek', 'pepek', 'kontol', 'totong', 'goblok', 'pilat'];
 
@@ -62,7 +63,7 @@ const EMOJI_SLOTS = [
 ];
 
 
-// Deck Kartu (Telah difix dengan menghapus duplicate Ace value 1 agar emoji di Blackjack sesuai)
+// Deck Kartu (Di-map dengan properti Suit dan Color secara otomatis untuk Canvas)
 const deckTemplate = [
     { name: 'A', value: 11, emoji: '<:Adiamond:1520729274393427970>' }, { name: 'A', value: 11, emoji: '<:Alove:1520731728233365636>' }, { name: 'A', value: 11, emoji: '<:As:1520731512859918357>' },
     { name: '2', value: 2, emoji: '<:2diamond:1520727950138413128>' }, { name: '2', value: 2, emoji: '<:2klub:1520725911580839966>' }, { name: '2', value: 2, emoji: '<:2s:1520730598644125816>' }, { name: '2', value: 2, emoji: '<:4love:1520729504895733892>' },
@@ -76,7 +77,16 @@ const deckTemplate = [
     { name: 'J', value: 10, emoji: '<:Jdiamond:1520729154985791529>' }, { name: 'J', value: 10, emoji: '<:Jklub:1520727307541544970>' }, { name: 'J', value: 10, emoji: '<:Js:1520731199230709820>' },
     { name: 'Q', value: 10, emoji: '<:Qklub:1520727374809927710>' }, { name: 'Q', value: 10, emoji: '<:Qs:1520731250573316167>' },
     { name: 'K', value: 10, emoji: '<:Kdiamond:1520729221440339968>' }, { name: 'K', value: 10, emoji: '<:Klub:1520727430690766918>' }, { name: 'K', value: 10, emoji: '<:Ks:1520731296085704835>' }
-];
+].map(card => {
+    let suit = '♠'; let color = '#000000';
+    const emojiLower = card.emoji.toLowerCase();
+    if (emojiLower.includes('diamond')) { suit = '♦'; color = '#ED4245'; }
+    else if (emojiLower.includes('love')) { suit = '♥'; color = '#ED4245'; }
+    else if (emojiLower.includes('klub') || emojiLower.includes('lub')) { suit = '♣'; color = '#000000'; }
+    else if (emojiLower.includes('s:')) { suit = '♠'; color = '#000000'; }
+    return { ...card, suit, color };
+});
+
 
 // Utilitas Permainan
 const drawCard = () => deckTemplate[Math.floor(Math.random() * deckTemplate.length)];
@@ -140,7 +150,153 @@ function getUserData(userId) {
         set lastDaily(time) { db.dailies[userId] = time; }
     };
 }
-// ===============================================================
+
+
+// ================= FUNGSI CANVAS HIGHLOW (GAMBAR UI) =================
+// Helper Custom Rounded Rectangle agar kompatibel dengan semua versi node-canvas
+function drawRoundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+}
+
+async function generateHighLowImage(bet, streak, cashOut, multiplier, cards, statusType, revealedCard, authorName) {
+    const width = 600;
+    const height = 400;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    // 1. Background Panel
+    ctx.fillStyle = '#2B2D31';
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Teks Info Header: "Bet • Streak • Cash Out"
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const infoText = `Bet: ${bet.toLocaleString()}   •   Streak: ${streak}   •   Cash Out: ${cashOut.toLocaleString()} (${multiplier.toFixed(2)}x)`;
+    ctx.fillText(infoText, width / 2, 30);
+
+    // 3. DIVIDER 1 (Bawah tulisan Bet Streak Cashout)
+    let divider1Y = 70;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; // Opacity 30%
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'butt'; // Ujung rata
+    ctx.beginPath();
+    ctx.moveTo(15, divider1Y); // Lebar ~95%
+    ctx.lineTo(width - 15, divider1Y);
+    ctx.stroke();
+
+    // 4. MENGGAMBAR KARTU (UKURAN LEBIH BESAR)
+    const cardW = 120;
+    const cardH = 168;
+    const gap = 40;
+
+    let cardsToDraw = [...cards.slice(-2)];
+    if (statusType === 'playing') {
+        cardsToDraw.push({ isBack: true });
+    } else if (revealedCard) {
+        cardsToDraw.push(revealedCard);
+    } else if (statusType === 'cashed_out' && revealedCard) {
+        cardsToDraw.push(revealedCard);
+    }
+
+    let totalCards = cardsToDraw.length;
+    let startX = (width - ((totalCards * cardW) + ((totalCards - 1) * gap))) / 2;
+    let cardY = 100;
+
+    for (let i = 0; i < totalCards; i++) {
+        let cx = startX + (i * (cardW + gap));
+        let card = cardsToDraw[i];
+
+        ctx.fillStyle = card.isBack ? '#5865F2' : '#FFFFFF';
+        drawRoundRect(ctx, cx, cardY, cardW, cardH, 12);
+        ctx.fill();
+        
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#23272A';
+        ctx.stroke();
+
+        if (card.isBack) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 50px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('?', cx + cardW/2, cardY + cardH/2);
+        } else {
+            ctx.fillStyle = card.color || '#000000';
+            
+            // Pojok Kiri Atas
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.font = 'bold 28px sans-serif';
+            ctx.fillText(card.name, cx + 12, cardY + 12);
+            ctx.font = '24px sans-serif';
+            ctx.fillText(card.suit || '', cx + 12, cardY + 40);
+
+            // Tengah Besar
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 60px sans-serif';
+            ctx.fillText(card.suit || '', cx + cardW/2, cardY + cardH/2 + 5);
+
+            // Pojok Kanan Bawah
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.font = 'bold 28px sans-serif';
+            ctx.fillText(card.name, cx + cardW - 12, cardY + cardH - 12);
+            ctx.font = '24px sans-serif';
+            ctx.fillText(card.suit || '', cx + cardW - 12, cardY + cardH - 40);
+        }
+    }
+
+    // 5. Teks: "Current Card: X"
+    const currentCard = cards[cards.length - 1];
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    let currentCardY = cardY + cardH + 30;
+    ctx.fillText(`Current Card: ${currentCard.value}`, width / 2, currentCardY);
+
+    // 6. DIVIDER 2 (Bawah Current Card)
+    let divider2Y = currentCardY + 40;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(15, divider2Y);
+    ctx.lineTo(width - 15, divider2Y);
+    ctx.stroke();
+
+    // 7. Footer Text
+    ctx.font = 'bold 22px sans-serif';
+    let footerY = divider2Y + 20;
+    if (statusType === 'lost') {
+        ctx.fillStyle = '#ED4245';
+        ctx.fillText('You guessed incorrectly! You lost.', width / 2, footerY);
+    } else if (statusType === 'cashed_out') {
+        ctx.fillStyle = '#57F287';
+        ctx.fillText(`Cashed out with ${cashOut.toLocaleString()} cash!`, width / 2, footerY);
+    } else {
+        ctx.fillStyle = '#B5BAC1'; // Discord grey text
+        ctx.fillText('Is the next card higher or lower?', width / 2, footerY);
+    }
+
+    return canvas.toBuffer();
+}
+// =================================================================
+
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -207,22 +363,20 @@ client.on('messageCreate', async (message) => {
         if (db.users[message.author.id] < amount) return message.reply('Your cash is enough.');
         if (target.id === message.author.id) return message.reply('You can send cash to yourself.');
 
-        // Membuat Embed Konfirmasi
         const confirmEmbed = new EmbedBuilder()
             .setColor('#00ff00')
             .setAuthor({ name: `${message.author.username}, you are about to give cash to ${target.username}`, iconURL: message.author.displayAvatarURL() })
             .setDescription(`To confirm this transaction, click ${EMOJI_APPROVE} Confirm.\nTo cancel this transaction, click ${EMOJI_NOT} Cancel.\n\n⚠️ *It is against our rules to trade cash for anything of monetary value. You will be banned for doing so.*\n\n**${message.author} will give ${target}:**\n\`${amount.toLocaleString()} cash\``);
 
         const confirmMsg = await message.reply({ embeds: [confirmEmbed] });
-        await confirmMsg.react('1520096857211273417'); // ID emoji approve
-        await confirmMsg.react('1520096893357527162'); // ID emoji not
+        await confirmMsg.react('1520096857211273417');
+        await confirmMsg.react('1520096893357527162'); 
 
         const filter = (reaction, user) => ['1520096857211273417', '1520096893357527162'].includes(reaction.emoji.id) && user.id === message.author.id;
-        
         const collector = confirmMsg.createReactionCollector({ filter, max: 1, time: 30000 });
 
         collector.on('collect', async (reaction) => {
-            if (reaction.emoji.id === '1520096857211273417') { // Jika klik approve
+            if (reaction.emoji.id === '1520096857211273417') { 
                 initUser(target.id);
                 db.users[message.author.id] -= amount;
                 db.users[target.id] += amount;
@@ -251,7 +405,6 @@ client.on('messageCreate', async (message) => {
     // Command: /menolaktoxic (Hanya Admin)
     if (message.content.startsWith('/menolaktoxic')) {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-        
         const channel = message.mentions.channels.first() || message.channel;
         antiToxicEnabled[message.guild.id] = channel.id;
         saveDB(); 
@@ -268,14 +421,14 @@ client.on('messageCreate', async (message) => {
 
         if (isToxic) {
             message.reply('WOI, GABOLE TOKSIK GABOLE TOKSIK <a:cats_nomnom_ramble:1517101274443677717>\n*Tolong jaga ketikanmu ya, ini peringatan! 🚨*');
-            return; // Hentikan proses jika pesan toksik
+            return; 
         }
     }
     
     // ================= 6. PERMAINAN BLACKJACK (sbj) =================
     if (command === 'sbj') {
         let bet = args[1];
-        if (!bet) bet = 1; // Default 1 cash kalau ga isi argumen
+        if (!bet) bet = 1; 
         
         let balance = db.users[message.author.id];
         if (bet.toString().toLowerCase() === 'all') {
@@ -309,10 +462,10 @@ client.on('messageCreate', async (message) => {
             let dealerEmojis = status === 'playing' ? `${dealerHand[0].emoji} ${EMOJI_CARDBACK}` : dealerHand.map(c => c.emoji).join(' ');
             
             let resultText = '';
-            if (status === 'win') resultText = `\n\n<:moneyslot:1519946191880720384> ~ You win ${EMOJI_CASH} **${bet * 2}** cash!`;
-            else if (status === 'lose') resultText = `\n\n🎲 ~ You lose ${EMOJI_CASH} **${bet}** cash!`;
-            else if (status === 'tie') resultText = `\n\n 🎲 ~ You tie bro!`;
-            else if (status === 'bust') resultText = `\n\n 🎲~ You bust bro!`;
+            if (status === 'win') resultText = `\n\n⎙ ~ You win ${EMOJI_CASH} **${bet * 2}** cash!`;
+            else if (status === 'lose') resultText = `\n\n⎙ ~ You lose ${EMOJI_CASH} **${bet}** cash!`;
+            else if (status === 'tie') resultText = `\n\n ⎙ ~ You tie bro!`;
+            else if (status === 'bust') resultText = `\n\n⎙ ~ You bust bro!`;
 
             let statusText = status === 'playing' || status === 'revealing' ? '\n\n.ᯤ Game in progress' : '';
 
@@ -330,8 +483,6 @@ client.on('messageCreate', async (message) => {
         const collector = msg.createReactionCollector({ filter, time: 60000 });
 
         collector.on('collect', async (reaction, user) => {
-            // Dihapus logic delete reaction-nya sehingga jumlah klik emoji dipertahankan
-
             if (reaction.emoji.name === '👊') {
                 if (hitCount < 3) { 
                     hitCount++;
@@ -363,6 +514,18 @@ client.on('messageCreate', async (message) => {
             while (calculateScore(dealerHand) < 17 && dealerCardsCount < 5) {
                 dealerHand.push(drawCard()); 
                 dealerCardsCount++;
+
+                // === FIX DEALER 5 KARTU PASTI > 18 ===
+                if (dealerCardsCount === 5 && calculateScore(dealerHand) <= 18) {
+                    let currentScore = calculateScore(dealerHand.slice(0, 4));
+                    // Cari kartu yang jika dijumlah akan bernilai > 18 (memastikan tidak tetap <= 18)
+                    let validCards = deckTemplate.filter(c => currentScore + c.value > 18);
+                    
+                    if (validCards.length > 0) {
+                        dealerHand[4] = validCards[Math.floor(Math.random() * validCards.length)];
+                    }
+                }
+                
                 await msg.edit({ embeds: [generateEmbed('revealing', '#0099ff')] });
                 await sleep(400);
             }
@@ -422,7 +585,7 @@ client.on('messageCreate', async (message) => {
         }, 2500);
     }
 
-    // ================= GAME HIGHLOW (shl) =================
+    // ================= GAME HIGHLOW CANVAS VER. (shl) =================
     if (command === 'shl') {
         if (checkCooldown(message.author.id, 'shl', message)) return;
 
@@ -450,7 +613,6 @@ client.on('messageCreate', async (message) => {
 
         let cardHistory = [firstCard]; 
         let streak = 0;
-        const cardbackEmoji = EMOJI_CARDBACK;
 
         const getNextProfit = (currentValue, type) => {
             let chance = type === 'higher' ? (13 - currentValue) / 12 : (currentValue - 1) / 12;
@@ -459,46 +621,27 @@ client.on('messageCreate', async (message) => {
             return Math.floor(bet * multiplier);
         };
 
-        function generateGameMessage(statusType = 'playing', selectedChoice = null, revealedCard = null) {
+        // Fungsi Helper untuk generate Canvas Embed + Komponen
+        async function buildGameMessage(statusType = 'playing', selectedChoice = null, revealedCard = null) {
             const currentCard = cardHistory[cardHistory.length - 1];
-            
             let currentCashOut = streak === 0 ? 0 : Math.floor(bet * Math.pow(1.45, streak));
             let currentMultiplier = streak === 0 ? 0.00 : Math.pow(1.45, streak);
 
-            // Logika display kartu: Menampilkan maksimum 3 kartu layaknya foto [Past] -> [Current] -> [Face Down]
-            let displayCards = cardHistory.slice(-2).map(c => c.emoji);
-            if (statusType === 'playing') {
-                displayCards.push(cardbackEmoji);
-            } else if (revealedCard) {
-                displayCards.push(revealedCard.emoji);
-            } else if (statusType === 'cashed_out') {
-                // Generate 1 random card to reveal visually upon cashing out
-                let randNext = drawCard();
-                while (randNext.value > 12) randNext = drawCard();
-                displayCards.push(randNext.emoji);
-            }
-            
-            let cardDisplayPath = displayCards.join(' ‣ ');
+            // Buat Buffer Gambar Menggunakan Canvas
+            const buffer = await generateHighLowImage(
+                bet, streak, currentCashOut, currentMultiplier, cardHistory, statusType, revealedCard, message.author.username
+            );
+            const attachment = new AttachmentBuilder(buffer, { name: 'highlow.png' });
 
-            // Tampilan info header menggunakan ────────
-            const infoHeader = `────────\n**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n────────`;
+            const embed = new EmbedBuilder()
+                .setImage('attachment://highlow.png');
 
-            const embed = new EmbedBuilder();
-            
-            if (statusType === 'playing') {
-                embed.setColor('#5865F2')
-                     .setDescription(`🃏 <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nIs the next card higher or lower?\n### Current Card: ${currentCard.value}`);
-            } else if (statusType === 'lost') {
-                embed.setColor('#ED4245')
-                     .setDescription(`👎 <@${message.author.id}> **guessed incorrectly!!**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nYou guessed **${selectedChoice}**. You lost.\n### Current Card: ${revealedCard.value}`);
-            } else if (statusType === 'cashed_out') {
-                embed.setColor('#57F287')
-                     .setDescription(`<:cash:1520734986674765974> <@${message.author.id}> **Cashed Out!**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nYou cashed out with **${currentCashOut.toLocaleString()}** cowoncy!\n### Current Card: ${currentCard.value}`);
-            }
+            if (statusType === 'playing') embed.setColor('#5865F2');
+            else if (statusType === 'lost') embed.setColor('#ED4245');
+            else if (statusType === 'cashed_out') embed.setColor('#57F287');
 
             const nextHigherProfit = getNextProfit(currentCard.value, 'higher');
             const nextLowerProfit = getNextProfit(currentCard.value, 'lower');
-
             const isFinished = statusType !== 'playing';
 
             const rowButtons = new ActionRowBuilder().addComponents(
@@ -522,10 +665,11 @@ client.on('messageCreate', async (message) => {
                     .setDisabled(streak === 0 || isFinished)
             );
 
-            return { embeds: [embed], components: [rowButtons, rowCashout] };
+            return { embeds: [embed], components: [rowButtons, rowCashout], files: [attachment] };
         }
 
-        const msg = await message.reply(generateGameMessage('playing'));
+        const initialPayload = await buildGameMessage('playing');
+        const msg = await message.reply(initialPayload);
         
         const collector = msg.createMessageComponentCollector({
             filter: i => i.user.id === message.author.id
@@ -540,23 +684,19 @@ client.on('messageCreate', async (message) => {
                 finalUserData.cash += finalWinnings;
                 saveDB();
 
-                return i.update(generateGameMessage('cashed_out'));
+                let randNext = drawCard();
+                while (randNext.value > 12) randNext = drawCard();
+
+                const cashoutPayload = await buildGameMessage('cashed_out', null, randNext);
+                return i.update(cashoutPayload);
             }
 
-            // Animasi Loading
-            let displayCards = cardHistory.slice(-2).map(c => c.emoji);
-            displayCards.push('<a:loadings:1520313495537586237>');
-            let cardDisplayPath = displayCards.join(' ‣ ');
-            
-            let currentCashOut = streak === 0 ? 0 : Math.floor(bet * Math.pow(1.45, streak));
-            let currentMultiplier = streak === 0 ? 0.00 : Math.pow(1.45, streak);
-            const infoHeader = `────────\n**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n────────`;
-
+            // Animasi Loading Embed Sederhana sebelum Update Gambar
             const animEmbed = new EmbedBuilder()
                 .setColor('#2F3136')
-                .setDescription(`<a:31830redloading:1520420716003196978> <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n## ${cardDisplayPath}`);
+                .setDescription(`<a:31830redloading:1520420716003196978> <@${message.author.id}> **is flipping the next card...**`);
 
-            await i.update({ embeds: [animEmbed], components: [] });
+            await i.update({ embeds: [animEmbed], components: [], files: [] });
 
             setTimeout(async () => {
                 let isHigher = i.customId === 'hl_higher';
@@ -582,7 +722,6 @@ client.on('messageCreate', async (message) => {
                     forceDirection === 'higher' ? c.value > currentCard.value : c.value < currentCard.value
                 );
                 
-                // Jika tidak ada kartu yang valid untuk dipaksa (fallback), gunakan sisi sebaliknya
                 if (validCards.length === 0) {
                     validCards = possibleCards.filter(c => 
                         forceDirection === 'higher' ? c.value < currentCard.value : c.value > currentCard.value
@@ -595,10 +734,12 @@ client.on('messageCreate', async (message) => {
                 if (isWon) {
                     streak++;
                     cardHistory.push(nextCard);
-                    await msg.edit(generateGameMessage('playing'));
+                    const updatePayload = await buildGameMessage('playing');
+                    await msg.edit(updatePayload);
                 } else {
                     collector.stop('lost');
-                    await msg.edit(generateGameMessage('lost', isHigher ? 'Higher' : 'Lower', nextCard));
+                    const lostPayload = await buildGameMessage('lost', isHigher ? 'Higher' : 'Lower', nextCard);
+                    await msg.edit(lostPayload);
                 }
             }, 1000);
         });
@@ -960,7 +1101,7 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // === UPDATE COMMAND SDAILY ===
+    // === COMMAND SDAILY ===
     if (command === 'sdaily') {
         const userData = getUserData(message.author.id);
         const cooldown = 24 * 60 * 60 * 1000;
