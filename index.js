@@ -23,6 +23,7 @@ const saveDB = () => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 
 // 3. Baru lakukan inisialisasi database dan panggil saveDB jika diperlukan
 let db = { users: {}, channels: [] };
+
 try {
     if (fs.existsSync(DB_FILE)) {
         const fileContent = fs.readFileSync(DB_FILE, 'utf8');
@@ -52,7 +53,6 @@ const EMOJI_MONEY = '<:moneyslot:1519946191880720384>';
 
 // Tambahan Anti-Toxic
 let antiToxicEnabled = {}; // Menyimpan channel yang aktif
-
 const TOXIC_WORDS = ['anjir', 'babi', 'lonte', 'kimak', 'asu', 'anjing', 'anjr', 'anjing', 'ngentot', 'memek', 'pepek', 'kontol', 'totong', 'goblok', 'pilat'];
 
 const EMOJI_SLOTS = [
@@ -61,12 +61,12 @@ const EMOJI_SLOTS = [
     '<:pisang:1519947217215946822>'
 ];
 
-
 // Deck Kartu (Telah difix dengan menghapus duplicate Ace value 1 agar emoji di Blackjack sesuai)
 const deckTemplate = [
     { name: 'A', value: 11, emoji: '<:Adiamond:1520729274393427970>' }, { name: 'A', value: 11, emoji: '<:Alove:1520731728233365636>' }, { name: 'A', value: 11, emoji: '<:As:1520731512859918357>' },
     { name: '2', value: 2, emoji: '<:2diamond:1520727950138413128>' }, { name: '2', value: 2, emoji: '<:2klub:1520725911580839966>' }, { name: '2', value: 2, emoji: '<:2s:1520730598644125816>' }, { name: '2', value: 2, emoji: '<:4love:1520729504895733892>' },
-    { name: '3', value: 3, emoji: '<:3diamond:1520727997257224363>' }, { name: '3', value: 3, emoji: '<:3klub:1520726090669101066>' }, { name: '3', value: 3, emoji: '<:3love:1520729558813511861>' }, { name: '3', value: 3, emoji: '<:3s:1520730667313397771>' },
+    { name: '3', value: 3, emoji: '<:3diamond:1520727997257224363>' }, { name: '3', value: 3, emoji: '<:3klub:1520726090669101066>' }, 
+    { name: '3', value: 3, emoji: '<:3love:1520729558813511861>' }, { name: '3', value: 3, emoji: '<:3s:1520730667313397771>' },
     { name: '4', value: 4, emoji: '<:4diamond:1520728385385402478>' }, { name: '4', value: 4, emoji: '<:4klub:1520726260383350996>' }, { name: '4', value: 4, emoji: '<:4love:1520729598839754762>' },
     { name: '5', value: 5, emoji: '<:5diamond:1520728583746617385>' }, { name: '5', value: 5, emoji: '<:5klub:1520726309574148226>' }, { name: '5', value: 5, emoji: '<:5love:1520729650983338055>' }, { name: '5', value: 5, emoji: '<:5s:1520730718945411082>' },
     { name: '6', value: 6, emoji: '<:6klub:1520726365588946975>' }, { name: '6', value: 6, emoji: '<:6love:1520750688940982352>' },
@@ -80,6 +80,7 @@ const deckTemplate = [
 
 // Utilitas Permainan
 const drawCard = () => deckTemplate[Math.floor(Math.random() * deckTemplate.length)];
+
 const calculateScore = (hand) => {
     let score = 0;
     let aces = 0;
@@ -95,6 +96,7 @@ const calculateScore = (hand) => {
 };
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const initUser = (userId) => {
     if (!db.users[userId]) {
         db.users[userId] = 20000;
@@ -107,7 +109,7 @@ const gameCooldowns = new Map();
 
 const checkCooldown = (userId, commandName, message) => {
     const now = Date.now();
-    const cooldownAmount = 10000; 
+    const cooldownAmount = 10000;
 
     if (!gameCooldowns.has(userId)) {
         gameCooldowns.set(userId, {});
@@ -117,7 +119,6 @@ const checkCooldown = (userId, commandName, message) => {
 
     if (userCooldowns[commandName]) {
         const expirationTime = userCooldowns[commandName] + cooldownAmount;
-
         if (now < expirationTime) {
             message.reply('Sabar lol! lagi cooldown').catch(() => {});
             return true;
@@ -218,7 +219,6 @@ client.on('messageCreate', async (message) => {
         await confirmMsg.react('1520096893357527162'); // ID emoji not
 
         const filter = (reaction, user) => ['1520096857211273417', '1520096893357527162'].includes(reaction.emoji.id) && user.id === message.author.id;
-        
         const collector = confirmMsg.createReactionCollector({ filter, max: 1, time: 30000 });
 
         collector.on('collect', async (reaction) => {
@@ -227,7 +227,7 @@ client.on('messageCreate', async (message) => {
                 db.users[message.author.id] -= amount;
                 db.users[target.id] += amount;
                 saveDB();
-                
+        
                 const successEmbed = new EmbedBuilder()
                     .setColor('#00ff00')
                     .setDescription(` ${EMOJI_CASH} | **${message.author.username}** successfully sent \`${amount.toLocaleString()} cash\` to **${target.username}**!`);
@@ -251,7 +251,6 @@ client.on('messageCreate', async (message) => {
     // Command: /menolaktoxic (Hanya Admin)
     if (message.content.startsWith('/menolaktoxic')) {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-        
         const channel = message.mentions.channels.first() || message.channel;
         antiToxicEnabled[message.guild.id] = channel.id;
         saveDB(); 
@@ -279,7 +278,7 @@ client.on('messageCreate', async (message) => {
         
         let balance = db.users[message.author.id];
         if (bet.toString().toLowerCase() === 'all') {
-            bet = Math.min(balance, 300000); 
+            bet = Math.min(balance, 300000);
         } else {
             bet = parseInt(bet);
         }
@@ -287,14 +286,14 @@ client.on('messageCreate', async (message) => {
         if (isNaN(bet) || bet <= 0) return message.reply('Taruhan tidak valid.');
         if (bet > 300000) return message.reply('Maksimal taruhan adalah 300.000 cash!');
         if (balance < bet) return message.reply('Cash kamu tidak cukup.');
-
+        
         db.users[message.author.id] -= bet;
         saveDB();
 
         let playerHand = [drawCard(), drawCard()];
         let dealerHand = [drawCard(), drawCard()];
-        let hitCount = 0; 
-
+        let hitCount = 0;
+        
         const getAggressiveCard = () => {
             const highCards = deckTemplate.filter(c => c.value >= 7);
             return highCards[Math.floor(Math.random() * highCards.length)];
@@ -309,13 +308,13 @@ client.on('messageCreate', async (message) => {
             let dealerEmojis = status === 'playing' ? `${dealerHand[0].emoji} ${EMOJI_CARDBACK}` : dealerHand.map(c => c.emoji).join(' ');
             
             let resultText = '';
-            if (status === 'win') resultText = `\n\n⎙ ~ You win ${EMOJI_CASH} **${bet * 2}** cash!`;
-            else if (status === 'lose') resultText = `\n\n⎙ ~ You lose ${EMOJI_CASH} **${bet}** cash!`;
-            else if (status === 'tie') resultText = `\n\n ⎙ ~ You tie bro!`;
-            else if (status === 'bust') resultText = `\n\n⎙ ~ You bust bro!`;
+            if (status === 'win') resultText = `\n\n <:cash:1520734986674765974> ~ You win ${EMOJI_CASH} **${bet * 2}** cash!`;
+            else if (status === 'lose') resultText = `\n\n <:24263sadmoos:1521588508756807770> ~ You lose ${EMOJI_CASH} **${bet}** cash!`;
+            else if (status === 'tie') resultText = `\n\n <:24263sadmoos:1521588508756807770> ~ You tie bro!`;
+            else if (status === 'bust') resultText = `\n\n<:24263sadmoos:1521588508756807770> ~ You bust bro!`;
 
             let statusText = status === 'playing' || status === 'revealing' ? '\n\n.ᯤ Game in progress' : '';
-
+            
             return new EmbedBuilder()
                 .setAuthor({ name: `${message.author.username}, you bet ${bet} to play blackjack`, iconURL: message.author.displayAvatarURL() })
                 .setColor(color)
@@ -325,13 +324,11 @@ client.on('messageCreate', async (message) => {
         const msg = await message.reply({ embeds: [generateEmbed('playing', '#0099ff')] });
         msg.react('👊');
         msg.react('🛑');
-
+        
         const filter = (reaction, user) => ['👊', '🛑'].includes(reaction.emoji.name) && user.id === message.author.id;
         const collector = msg.createReactionCollector({ filter, time: 60000 });
-
+        
         collector.on('collect', async (reaction, user) => {
-            // Dihapus logic delete reaction-nya sehingga jumlah klik emoji dipertahankan
-
             if (reaction.emoji.name === '👊') {
                 if (hitCount < 3) { 
                     hitCount++;
@@ -347,7 +344,7 @@ client.on('messageCreate', async (message) => {
                 collector.stop('stand');
             }
         });
-
+        
         collector.on('end', async (collected, reason) => {
             if (reason === 'time') {
                 db.users[message.author.id] += bet;
@@ -370,11 +367,17 @@ client.on('messageCreate', async (message) => {
             const dScore = calculateScore(dealerHand);
             let finalStatus, finalColor;
 
-            if (pScore > 21) { finalStatus = 'bust'; finalColor = '#ff0000'; }
-            else if (dScore > 21) { finalStatus = 'win'; finalColor = '#00ff00'; db.users[message.author.id] += (bet * 2); }
-            else if (pScore > dScore) { finalStatus = 'win'; finalColor = '#00ff00'; db.users[message.author.id] += (bet * 2); }
-            else if (dScore > pScore) { finalStatus = 'lose'; finalColor = '#ff0000'; }
-            else { finalStatus = 'tie'; finalColor = '#808080'; db.users[message.author.id] += bet; }
+            if (pScore > 21) { 
+                finalStatus = 'bust'; finalColor = '#ff0000'; 
+            } else if (dScore > 21) { 
+                finalStatus = 'win'; finalColor = '#00ff00'; db.users[message.author.id] += (bet * 2); 
+            } else if (pScore > dScore) { 
+                finalStatus = 'win'; finalColor = '#00ff00'; db.users[message.author.id] += (bet * 2); 
+            } else if (dScore > pScore) { 
+                finalStatus = 'lose'; finalColor = '#ff0000'; 
+            } else { 
+                finalStatus = 'tie'; finalColor = '#808080'; db.users[message.author.id] += bet; 
+            }
 
             saveDB();
             await msg.edit({ embeds: [generateEmbed(finalStatus, finalColor)] });
@@ -386,8 +389,8 @@ client.on('messageCreate', async (message) => {
         if (checkCooldown(message.author.id, 'scf', message)) return;
         const authorData = getUserData(message.author.id);
         let bet = null;
-        let side = 'heads'; 
-
+        let side = 'heads';
+        
         args.forEach(arg => {
             const a = arg.toLowerCase();
             if (a === 'all') bet = authorData.cash;
@@ -395,7 +398,7 @@ client.on('messageCreate', async (message) => {
             else if (a === 'h') side = 'heads';
             else if (a === 't') side = 'tails';
         });
-
+        
         if (bet === null) bet = 1;
         if (bet > 300000) bet = 300000;
         
@@ -425,7 +428,6 @@ client.on('messageCreate', async (message) => {
     // ================= GAME HIGHLOW (shl) =================
     if (command === 'shl') {
         if (checkCooldown(message.author.id, 'shl', message)) return;
-
         const authorData = getUserData(message.author.id);
         let bet = null;
 
@@ -434,15 +436,15 @@ client.on('messageCreate', async (message) => {
             if (a === 'all') bet = authorData.cash;
             else if (!isNaN(a)) bet = parseInt(a);
         });
-
+        
         if (bet === null) bet = 1000; 
-        if (bet > 300000) bet = 300000; 
+        if (bet > 300000) bet = 300000;
         if (bet <= 0) return message.reply('❌ Masukkan jumlah taruhan yang valid!');
         if (authorData.cash < bet) return message.reply(`❌ Saldo cash kamu tidak mencukupi untuk bertaruh **${bet.toLocaleString()}** cash.`);
 
         authorData.cash -= bet;
         saveDB();
-
+        
         let firstCard = drawCard();
         while (firstCard.value > 12) {
             firstCard = drawCard();
@@ -451,17 +453,19 @@ client.on('messageCreate', async (message) => {
         let cardHistory = [firstCard]; 
         let streak = 0;
         const cardbackEmoji = EMOJI_CARDBACK;
+        
+        // Konstanta garis pemisah yang rapi
+        const hlDivider = '─'.repeat(40);
 
         const getNextProfit = (currentValue, type) => {
             let chance = type === 'higher' ? (13 - currentValue) / 12 : (currentValue - 1) / 12;
-            if (chance <= 0) chance = 0.1; 
+            if (chance <= 0) chance = 0.1;
             const multiplier = (1 / chance) * 1.15; 
             return Math.floor(bet * multiplier);
         };
-
+        
         function generateGameMessage(statusType = 'playing', selectedChoice = null, revealedCard = null) {
             const currentCard = cardHistory[cardHistory.length - 1];
-            
             let currentCashOut = streak === 0 ? 0 : Math.floor(bet * Math.pow(1.45, streak));
             let currentMultiplier = streak === 0 ? 0.00 : Math.pow(1.45, streak);
 
@@ -479,28 +483,27 @@ client.on('messageCreate', async (message) => {
             }
             
             let cardDisplayPath = displayCards.join(' ‣ ');
-
-            // Tampilan info header menggunakan ────────
-            const infoHeader = `────────\n**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n────────`;
-
+            
+            // Tampilan info header
+            const infoHeader = `**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n${hlDivider}`;
             const embed = new EmbedBuilder();
             
             if (statusType === 'playing') {
                 embed.setColor('#5865F2')
-                     .setDescription(`🃏 <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nIs the next card higher or lower?\n### Current Card: ${currentCard.value}`);
+                     .setDescription(`🃏 <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n# ${cardDisplayPath}\n\nIs the next card higher or lower?\n${hlDivider}\n### Current Card: ${currentCard.value}`);
             } else if (statusType === 'lost') {
                 embed.setColor('#ED4245')
-                     .setDescription(`👎 <@${message.author.id}> **guessed incorrectly!!**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nYou guessed **${selectedChoice}**. You lost.\n### Current Card: ${revealedCard.value}`);
+                     .setDescription(`👎 <@${message.author.id}> **guessed incorrectly!!**\n${infoHeader}\n\n# ${cardDisplayPath}\n\nYou guessed **${selectedChoice}**. You lost.\n${hlDivider}\n### Current Card: ${revealedCard.value}`);
             } else if (statusType === 'cashed_out') {
                 embed.setColor('#57F287')
-                     .setDescription(`💰 <@${message.author.id}> **Cashed Out!**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nYou cashed out with **${currentCashOut.toLocaleString()}** cowoncy!\n### Current Card: ${currentCard.value}`);
+                     .setDescription(`💰 <@${message.author.id}> **Cashed Out!**\n${infoHeader}\n\n# ${cardDisplayPath}\n\nYou cashed out with **${currentCashOut.toLocaleString()}** cowoncy!\n${hlDivider}\n### Current Card: ${currentCard.value}`);
             }
 
             const nextHigherProfit = getNextProfit(currentCard.value, 'higher');
             const nextLowerProfit = getNextProfit(currentCard.value, 'lower');
 
             const isFinished = statusType !== 'playing';
-
+            
             const rowButtons = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('hl_higher')
@@ -513,7 +516,7 @@ client.on('messageCreate', async (message) => {
                     .setStyle(ButtonStyle.Primary)
                     .setDisabled(isFinished)
             );
-
+            
             const rowCashout = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('hl_cashout')
@@ -521,7 +524,7 @@ client.on('messageCreate', async (message) => {
                     .setStyle(ButtonStyle.Success)
                     .setDisabled(streak === 0 || isFinished)
             );
-
+            
             return { embeds: [embed], components: [rowButtons, rowCashout] };
         }
 
@@ -530,7 +533,7 @@ client.on('messageCreate', async (message) => {
         const collector = msg.createMessageComponentCollector({
             filter: i => i.user.id === message.author.id
         });
-
+        
         collector.on('collect', async i => {
             if (i.customId === 'hl_cashout') {
                 collector.stop('cashout');
@@ -546,52 +549,29 @@ client.on('messageCreate', async (message) => {
             // Animasi Loading
             let displayCards = cardHistory.slice(-2).map(c => c.emoji);
             displayCards.push('<a:loadings:1520313495537586237>');
+ 
             let cardDisplayPath = displayCards.join(' ‣ ');
             
             let currentCashOut = streak === 0 ? 0 : Math.floor(bet * Math.pow(1.45, streak));
             let currentMultiplier = streak === 0 ? 0.00 : Math.pow(1.45, streak);
-            const infoHeader = `────────\n**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n────────`;
-
+            const infoHeader = `**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n${hlDivider}`;
+            
             const animEmbed = new EmbedBuilder()
                 .setColor('#2F3136')
-                .setDescription(`<a:31830redloading:1520420716003196978> <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n## ${cardDisplayPath}`);
-
+                .setDescription(`<a:31830redloading:1520420716003196978> <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n# ${cardDisplayPath}`);
+            
             await i.update({ embeds: [animEmbed], components: [] });
 
             setTimeout(async () => {
                 let isHigher = i.customId === 'hl_higher';
                 const currentCard = cardHistory[cardHistory.length - 1];
                 
-                // SISTEM TRIK JUDI KASINO 80/20%
-                let isSmall = currentCard.value <= 6;
-                let isBig = currentCard.value > 6;
-                let forceDirection;
-                let rand = Math.random();
-
-                if (isSmall) {
-                    forceDirection = rand < 0.80 ? 'higher' : 'lower';
-                } else if (isBig) {
-                    forceDirection = rand < 0.80 ? 'lower' : 'higher';
-                } else {
-                    forceDirection = rand < 0.50 ? 'higher' : 'lower';
-                }
-
+                // SISTEM PURE RNG / HOKI PEMAIN (Tidak ada lagi sistem judi paksaan 80/20%)
                 let possibleCards = deckTemplate.filter(c => c.value <= 12 && c.value !== currentCard.value);
+                let nextCard = possibleCards[Math.floor(Math.random() * possibleCards.length)];
                 
-                let validCards = possibleCards.filter(c => 
-                    forceDirection === 'higher' ? c.value > currentCard.value : c.value < currentCard.value
-                );
-                
-                // Jika tidak ada kartu yang valid untuk dipaksa (fallback), gunakan sisi sebaliknya
-                if (validCards.length === 0) {
-                    validCards = possibleCards.filter(c => 
-                        forceDirection === 'higher' ? c.value < currentCard.value : c.value > currentCard.value
-                    );
-                }
-
-                let nextCard = validCards[Math.floor(Math.random() * validCards.length)];
                 let isWon = isHigher ? (nextCard.value > currentCard.value) : (nextCard.value < currentCard.value);
-
+                
                 if (isWon) {
                     streak++;
                     cardHistory.push(nextCard);
@@ -613,23 +593,23 @@ client.on('messageCreate', async (message) => {
             return message.reply('❌ Format salah! Gunakan: `smine inv @user <jumlah_taruhan>`');
         }
         if (isNaN(betAmt) || betAmt <= 0) return message.reply('❌ Masukkan jumlah taruhan yang valid!');
-
+        
         const authorData = getUserData(message.author.id);
         const targetData = getUserData(targetUser.id);
 
         if (authorData.cash < betAmt) return message.reply('❌ cash kamu tidak cukup!');
         if (targetData.cash < betAmt) return message.reply(`❌ cash **${targetUser.username}** tidak cukup!`);
-
+        
         const inviteEmbed = new EmbedBuilder()
             .setColor('#FFA500')
             .setAuthor({ name: `${message.author.tag} | DUEL MINE`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
             .setDescription(`💣 <@${message.author.id}> mengajak <@${targetUser.id}> berduel **Mines**!\n**Taruhan:** ${betAmt.toLocaleString()} cash\n\nSiapa yang terkena bom kalah! Klik **Setuju** untuk memulai!`);
-
+        
         const inviteRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('mine_pvp_acc').setLabel('Setuju').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('mine_pvp_dec').setLabel('Tolak').setStyle(ButtonStyle.Danger)
         );
-
+        
         const inviteMsg = await message.reply({ content: `<@${targetUser.id}>`, embeds: [inviteEmbed], components: [inviteRow] });
         
         const filter = i => [message.author.id, targetUser.id].includes(i.user.id);
@@ -653,7 +633,7 @@ client.on('messageCreate', async (message) => {
                 let turnPlayer = Math.random() < 0.5 ? message.author.id : targetUser.id;
                 let bombs = [];
                 while(bombs.length < 2) {
-                    let r = Math.floor(Math.random() * 9);
+                     let r = Math.floor(Math.random() * 9);
                     if(!bombs.includes(r)) bombs.push(r);
                 }
                 
@@ -688,7 +668,7 @@ client.on('messageCreate', async (message) => {
                     .setColor('#5865F2')
                     .setTitle('MINE DUEL')
                     .setDescription(`Pot: **${betAmt * 2} cash**\nGiliran: <@${turnPlayer}> (Pilih kotak!)`);
-
+                    
                 await i.update({ content: 'DUEL DIMULAI!', embeds: [], components: [] });
                 const gameMsg = await message.channel.send({ embeds: [gameEmbed], components: buildGrid() });
                 const gameCollector = gameMsg.createMessageComponentCollector({ time: 60000 });
@@ -702,6 +682,7 @@ client.on('messageCreate', async (message) => {
                     if (bombs.includes(idx)) {
                         gameOver = true;
                         gameCollector.stop();
+                        
                         let winner = turnPlayer === message.author.id ? targetUser.id : message.author.id;
                         getUserData(winner).cash += (betAmt * 2);
                         saveDB();
@@ -735,25 +716,24 @@ client.on('messageCreate', async (message) => {
     // 8. GAME SLOTS: Slots (ss atau slot) - Maksimal 300.000
     if (command === 'ss' || command === 'slot') {
         const authorData = getUserData(message.author.id);
-        
         let bet = null;
+        
         args.forEach(arg => {
             const a = arg.toLowerCase();
             if (a === 'all') bet = authorData.cash;
             else if (!isNaN(a)) bet = parseInt(a);
         });
-
+        
         if (bet === null) bet = 1;  
-        if (bet > 300000) bet = 300000;   
-
+        if (bet > 300000) bet = 300000;
         if (bet <= 0) return message.reply('❌ Jumlah taruhan harus di atas 0.');
         if (authorData.cash < bet) return message.reply('❌ cash kamu tidak mencukupi.');
 
         authorData.cash -= bet;
         saveDB();
-
-        const processMsg = await message.reply(`**  \`___SLOTS___\`**\n\` \` ${EMOJI_SLOTS_SPIN} ${EMOJI_SLOTS_SPIN} ${EMOJI_SLOTS_SPIN} **${message.author.username}** bet ${EMOJI_MONEY} ${bet.toLocaleString()}\n  \`|         |\`    spinning...\n  \`|         |\``);
-
+        
+        const processMsg = await message.reply(`** \`___SLOTS___\`**\n\` \` ${EMOJI_SLOTS_SPIN} ${EMOJI_SLOTS_SPIN} ${EMOJI_SLOTS_SPIN} **${message.author.username}** bet ${EMOJI_MONEY} ${bet.toLocaleString()}\n  \`|         |\`    spinning...\n  \`|         |\``);
+        
         setTimeout(async () => {
             let slot1, slot2, slot3;
             let winRatio = 0;
@@ -772,7 +752,6 @@ client.on('messageCreate', async (message) => {
                 const pairEmoji = EMOJI_SLOTS[Math.floor(Math.random() * EMOJI_SLOTS.length)];
                 const remaining = EMOJI_SLOTS.filter(e => e !== pairEmoji);
                 const diffEmoji = remaining[Math.floor(Math.random() * remaining.length)];
-                
                 const positions = [pairEmoji, pairEmoji, diffEmoji].sort(() => Math.random() - 0.5);
                 slot1 = positions[0]; slot2 = positions[1]; slot3 = positions[2];
                 const winnings = Math.floor(bet * winRatio);
@@ -789,7 +768,7 @@ client.on('messageCreate', async (message) => {
                 saveDB();
             }
 
-            await processMsg.edit(`**  \`___SLOTS___\`**\n\` \` ${slot1} ${slot2} ${slot3} **${message.author.username}** bet ${EMOJI_MONEY} ${bet.toLocaleString()}\n  \`|         |\`    ${statusText}\n  \`|         |\``);
+            await processMsg.edit(`** \`___SLOTS___\`**\n\` \` ${slot1} ${slot2} ${slot3} **${message.author.username}** bet ${EMOJI_MONEY} ${bet.toLocaleString()}\n  \`|         |\`    ${statusText}\n  \`|         |\``);
         }, 3000);
     }
 
@@ -798,6 +777,7 @@ client.on('messageCreate', async (message) => {
         if (checkCooldown(message.author.id, 'smine', message)) return;
         const authorData = getUserData(message.author.id);
         let bet = null;
+        
         args.forEach(arg => {
             const a = arg.toLowerCase();
             if (a === 'all') bet = authorData.cash;
@@ -806,7 +786,6 @@ client.on('messageCreate', async (message) => {
         
         if (bet === null) bet = 100;  
         if (bet > 300000) bet = 300000;
-        
         if (bet <= 0) return message.reply('❌ jumlah taruhan harus di atas 0.');
         if (authorData.cash < bet) return message.reply(`❌ cash kamu tidak mencukupi untuk bertaruh **${bet.toLocaleString()}** cash.`);
 
