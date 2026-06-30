@@ -33,7 +33,7 @@ try {
 } catch (error) {
     console.error("Database rusak, mereset ke default...");
     db = { users: {}, channels: [] };
-    saveDB(); 
+    saveDB(); // Sekarang saveDB sudah didefinisikan, jadi ini tidak akan error
 }
 
 // Emoji Setup
@@ -52,6 +52,7 @@ const EMOJI_MONEY = '<:moneyslot:1519946191880720384>';
 
 // Tambahan Anti-Toxic
 let antiToxicEnabled = {}; // Menyimpan channel yang aktif
+
 const TOXIC_WORDS = ['anjir', 'babi', 'lonte', 'kimak', 'asu', 'anjing', 'anjr', 'anjing', 'ngentot', 'memek', 'pepek', 'kontol', 'totong', 'goblok', 'pilat'];
 
 const EMOJI_SLOTS = [
@@ -61,12 +62,12 @@ const EMOJI_SLOTS = [
 ];
 
 
-// Deck Kartu Sesuai Permintaan (Sudah Diperbaiki Agar Sesuai Nilai)
+// Deck Kartu (Telah difix dengan menghapus duplicate Ace value 1 agar emoji di Blackjack sesuai)
 const deckTemplate = [
     { name: 'A', value: 11, emoji: '<:Adiamond:1520729274393427970>' }, { name: 'A', value: 11, emoji: '<:Alove:1520731728233365636>' }, { name: 'A', value: 11, emoji: '<:As:1520731512859918357>' },
-    { name: '2', value: 2, emoji: '<:2diamond:1520727950138413128>' }, { name: '2', value: 2, emoji: '<:2klub:1520725911580839966>' }, { name: '2', value: 2, emoji: '<:2s:1520730598644125816>' },
+    { name: '2', value: 2, emoji: '<:2diamond:1520727950138413128>' }, { name: '2', value: 2, emoji: '<:2klub:1520725911580839966>' }, { name: '2', value: 2, emoji: '<:2s:1520730598644125816>' }, { name: '2', value: 2, emoji: '<:4love:1520729504895733892>' },
     { name: '3', value: 3, emoji: '<:3diamond:1520727997257224363>' }, { name: '3', value: 3, emoji: '<:3klub:1520726090669101066>' }, { name: '3', value: 3, emoji: '<:3love:1520729558813511861>' }, { name: '3', value: 3, emoji: '<:3s:1520730667313397771>' },
-    { name: '4', value: 4, emoji: '<:4diamond:1520728385385402478>' }, { name: '4', value: 4, emoji: '<:4klub:1520726260383350996>' }, { name: '4', value: 4, emoji: '<:4love:1520729504895733892>' },
+    { name: '4', value: 4, emoji: '<:4diamond:1520728385385402478>' }, { name: '4', value: 4, emoji: '<:4klub:1520726260383350996>' }, { name: '4', value: 4, emoji: '<:4love:1520729598839754762>' },
     { name: '5', value: 5, emoji: '<:5diamond:1520728583746617385>' }, { name: '5', value: 5, emoji: '<:5klub:1520726309574148226>' }, { name: '5', value: 5, emoji: '<:5love:1520729650983338055>' }, { name: '5', value: 5, emoji: '<:5s:1520730718945411082>' },
     { name: '6', value: 6, emoji: '<:6klub:1520726365588946975>' }, { name: '6', value: 6, emoji: '<:6love:1520750688940982352>' },
     { name: '7', value: 7, emoji: '<:7diamond:1520728983036235906>' }, { name: '7', value: 7, emoji: '<:7klub:1520726419548803184>' }, { name: '7', value: 7, emoji: '<:7love:1520730479488274432>' },
@@ -101,7 +102,6 @@ const initUser = (userId) => {
     }
 };
 
-
 // ================= FITUR (COOLDOWN) =================
 const gameCooldowns = new Map();
 
@@ -128,7 +128,7 @@ const checkCooldown = (userId, commandName, message) => {
     return false;
 };
 
-// Wrapper getUserData untuk Game Baru agar kompatibel dengan sistem lama
+// Wrapper getUserData
 if (!db.dailies) db.dailies = {};
 function getUserData(userId) {
     initUser(userId);
@@ -163,7 +163,7 @@ client.on('messageCreate', async (message) => {
     }
 
     // Cek apakah perintah dijalankan di channel yang diizinkan
-    if (db.channels.length > 0 && !db.channels.includes(message.channel.id) && ['sbj', 'scash', '/setcash', '!sendcash', 'csend'].includes(command)) {
+    if (db.channels.length > 0 && !db.channels.includes(message.channel.id) && ['sbj', 'shl', 'scash', '/setcash', '!sendcash', 'csend', 'ss', 'slot', 'scf', 'smine', 'sdaily'].includes(command)) {
         return message.reply('Perintah tidak dapat digunakan di channel ini.');
     }
 
@@ -198,57 +198,57 @@ client.on('messageCreate', async (message) => {
     }
 
     // 5. Transfer Cash dengan Konfirmasi
-if (command === 'csend') {
-    const target = message.mentions.users.first();
-    const amount = parseInt(args[2]);
-    
-    if (!target) return message.reply('TAG USER.');
-    if (isNaN(amount) || amount <= 0) return message.reply('Enter valid amount.');
-    if (db.users[message.author.id] < amount) return message.reply('Your cash is enough.');
-    if (target.id === message.author.id) return message.reply('You can send cash to yourself.');
+    if (command === 'csend') {
+        const target = message.mentions.users.first();
+        const amount = parseInt(args[2]);
+        
+        if (!target) return message.reply('TAG USER.');
+        if (isNaN(amount) || amount <= 0) return message.reply('Enter valid amount.');
+        if (db.users[message.author.id] < amount) return message.reply('Your cash is enough.');
+        if (target.id === message.author.id) return message.reply('You can send cash to yourself.');
 
-    // Membuat Embed Konfirmasi
-    const confirmEmbed = new EmbedBuilder()
-        .setColor('#00ff00')
-        .setAuthor({ name: `${message.author.username}, you are about to give cash to ${target.username}`, iconURL: message.author.displayAvatarURL() })
-        .setDescription(`To confirm this transaction, click ${EMOJI_APPROVE} Confirm.\nTo cancel this transaction, click ${EMOJI_NOT} Cancel.\n\n⚠️ *It is against our rules to trade cash for anything of monetary value. You will be banned for doing so.*\n\n**${message.author} will give ${target}:**\n\`${amount.toLocaleString()} cash\``);
+        // Membuat Embed Konfirmasi
+        const confirmEmbed = new EmbedBuilder()
+            .setColor('#00ff00')
+            .setAuthor({ name: `${message.author.username}, you are about to give cash to ${target.username}`, iconURL: message.author.displayAvatarURL() })
+            .setDescription(`To confirm this transaction, click ${EMOJI_APPROVE} Confirm.\nTo cancel this transaction, click ${EMOJI_NOT} Cancel.\n\n⚠️ *It is against our rules to trade cash for anything of monetary value. You will be banned for doing so.*\n\n**${message.author} will give ${target}:**\n\`${amount.toLocaleString()} cash\``);
 
-    const confirmMsg = await message.reply({ embeds: [confirmEmbed] });
-    await confirmMsg.react('1520096857211273417'); // ID emoji approve
-    await confirmMsg.react('1520096893357527162'); // ID emoji not
+        const confirmMsg = await message.reply({ embeds: [confirmEmbed] });
+        await confirmMsg.react('1520096857211273417'); // ID emoji approve
+        await confirmMsg.react('1520096893357527162'); // ID emoji not
 
-    const filter = (reaction, user) => ['1520096857211273417', '1520096893357527162'].includes(reaction.emoji.id) && user.id === message.author.id;
-    
-    const collector = confirmMsg.createReactionCollector({ filter, max: 1, time: 30000 });
+        const filter = (reaction, user) => ['1520096857211273417', '1520096893357527162'].includes(reaction.emoji.id) && user.id === message.author.id;
+        
+        const collector = confirmMsg.createReactionCollector({ filter, max: 1, time: 30000 });
 
-    collector.on('collect', async (reaction) => {
-        if (reaction.emoji.id === '1520096857211273417') { // Jika klik approve
-            initUser(target.id);
-            db.users[message.author.id] -= amount;
-            db.users[target.id] += amount;
-            saveDB();
-            
-            const successEmbed = new EmbedBuilder()
-                .setColor('#00ff00')
-                .setDescription(` ${EMOJI_CASH} | **${message.author.username}** successfully sent \`${amount.toLocaleString()} cash\` to **${target.username}**!`);
-            
-            confirmMsg.edit({ embeds: [successEmbed] });
-            confirmMsg.reactions.removeAll().catch(() => {});
-        } else {
-            confirmMsg.edit({ content: '❌ Transaction cancelled.', embeds: [] });
-            confirmMsg.reactions.removeAll().catch(() => {});
-        }
-    });
+        collector.on('collect', async (reaction) => {
+            if (reaction.emoji.id === '1520096857211273417') { // Jika klik approve
+                initUser(target.id);
+                db.users[message.author.id] -= amount;
+                db.users[target.id] += amount;
+                saveDB();
+                
+                const successEmbed = new EmbedBuilder()
+                    .setColor('#00ff00')
+                    .setDescription(` ${EMOJI_CASH} | **${message.author.username}** successfully sent \`${amount.toLocaleString()} cash\` to **${target.username}**!`);
+                
+                confirmMsg.edit({ embeds: [successEmbed] });
+                confirmMsg.reactions.removeAll();
+            } else {
+                confirmMsg.edit({ content: '❌ Transaction cancelled.', embeds: [] });
+                confirmMsg.reactions.removeAll();
+            }
+        });
 
-    collector.on('end', (collected) => {
-        if (collected.size === 0) {
-            confirmMsg.edit({ content: '⏳ Confirmation time expired.', embeds: [] });
-            confirmMsg.reactions.removeAll().catch(() => {});
-        }
-    });
-}
+        collector.on('end', (collected) => {
+            if (collected.size === 0) {
+                confirmMsg.edit({ content: '⏳ Confirmation time expired.', embeds: [] });
+                confirmMsg.reactions.removeAll();
+            }
+        });
+    }
 
-// Command: /menolaktoxic (Hanya Admin)
+    // Command: /menolaktoxic (Hanya Admin)
     if (message.content.startsWith('/menolaktoxic')) {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
         
@@ -258,7 +258,7 @@ if (command === 'csend') {
         return message.reply('**FITUR ANTI TOXIC BERHASIL DI NYALAKAN! ⚠️**');
     }
 
-    // Deteksi Anti-Toxic Tanpa Timeout
+    // Deteksi Anti-Toxic (Tanpa Timeout)
     if (antiToxicEnabled[message.guild.id] === message.channel.id && 
         !message.member.permissions.has(PermissionsBitField.Flags.Administrator) && 
         !message.author.bot) {
@@ -267,26 +267,26 @@ if (command === 'csend') {
         const isToxic = TOXIC_WORDS.some(word => content.includes(word));
 
         if (isToxic) {
-            message.reply('WOI, GABOLE TOKSIK GABOLE TOKSIK <a:cats_nomnom_ramble:1517101274443677717>');
-            return; 
+            message.reply('WOI, GABOLE TOKSIK GABOLE TOKSIK <a:cats_nomnom_ramble:1517101274443677717>\n*Tolong jaga ketikanmu ya, ini peringatan! 🚨*');
+            return; // Hentikan proses jika pesan toksik
         }
     }
     
-    // 6. PERMAINAN BLACKJACK (sbj)
+    // ================= 6. PERMAINAN BLACKJACK (sbj) =================
     if (command === 'sbj') {
         let bet = args[1];
-        if (!bet) bet = '1'; // Default ke 1 jika diketik tanpa jumlah
-
+        if (!bet) bet = 1; // Default 1 cash kalau ga isi argumen
+        
         let balance = db.users[message.author.id];
-        if (bet.toLowerCase() === 'all') {
+        if (bet.toString().toLowerCase() === 'all') {
             bet = Math.min(balance, 300000); 
         } else {
             bet = parseInt(bet);
         }
 
         if (isNaN(bet) || bet <= 0) return message.reply('Taruhan tidak valid.');
-        if (bet > 300000) return message.reply('❌ Maksimal taruhan adalah 300,000 cash!');
-        if (balance < bet) return message.reply('cash kamu tidak cukup.');
+        if (bet > 300000) return message.reply('Maksimal taruhan adalah 300.000 cash!');
+        if (balance < bet) return message.reply('Cash kamu tidak cukup.');
 
         db.users[message.author.id] -= bet;
         saveDB();
@@ -309,10 +309,10 @@ if (command === 'csend') {
             let dealerEmojis = status === 'playing' ? `${dealerHand[0].emoji} ${EMOJI_CARDBACK}` : dealerHand.map(c => c.emoji).join(' ');
             
             let resultText = '';
-            if (status === 'win') resultText = `\n\n⎙ ~ You win ${EMOJI_CASH} **${bet * 2}** cash!`;
-            else if (status === 'lose') resultText = `\n\n⎙ ~ You lose ${EMOJI_CASH} **${bet}** cash!`;
-            else if (status === 'tie') resultText = `\n\n ⎙ ~ You tie bro!`;
-            else if (status === 'bust') resultText = `\n\n⎙ ~ You bust bro!`;
+            if (status === 'win') resultText = `\n\n<:moneyslot:1519946191880720384> ~ You win ${EMOJI_CASH} **${bet * 2}** cash!`;
+            else if (status === 'lose') resultText = `\n\n🎲 ~ You lose ${EMOJI_CASH} **${bet}** cash!`;
+            else if (status === 'tie') resultText = `\n\n 🎲 ~ You tie bro!`;
+            else if (status === 'bust') resultText = `\n\n 🎲~ You bust bro!`;
 
             let statusText = status === 'playing' || status === 'revealing' ? '\n\n.ᯤ Game in progress' : '';
 
@@ -323,19 +323,19 @@ if (command === 'csend') {
         };
 
         const msg = await message.reply({ embeds: [generateEmbed('playing', '#0099ff')] });
-        await msg.react('👊');
-        await msg.react('🛑');
+        msg.react('👊');
+        msg.react('🛑');
 
         const filter = (reaction, user) => ['👊', '🛑'].includes(reaction.emoji.name) && user.id === message.author.id;
         const collector = msg.createReactionCollector({ filter, time: 60000 });
 
         collector.on('collect', async (reaction, user) => {
-            reaction.users.remove(user.id).catch(() => {});
+            // Dihapus logic delete reaction-nya sehingga jumlah klik emoji dipertahankan
 
             if (reaction.emoji.name === '👊') {
                 if (hitCount < 3) { 
                     hitCount++;
-                    playerHand.push(getAggressiveCard()); 
+                    playerHand.push(getAggressiveCard());
                     
                     if (calculateScore(playerHand) > 21) {
                         collector.stop('bust');
@@ -349,9 +349,6 @@ if (command === 'csend') {
         });
 
         collector.on('end', async (collected, reason) => {
-            // Hapus semua reaksi saat game selesai
-            msg.reactions.removeAll().catch(() => {});
-
             if (reason === 'time') {
                 db.users[message.author.id] += bet;
                 saveDB();
@@ -384,7 +381,7 @@ if (command === 'csend') {
         });
     }
 
-// 7. Command: Coinflip (scf) - Maksimal 300.000
+    // ================= 7. Command: Coinflip (scf) =================
     if (command === 'scf') {
         if (checkCooldown(message.author.id, 'scf', message)) return;
         const authorData = getUserData(message.author.id);
@@ -393,7 +390,7 @@ if (command === 'csend') {
 
         args.forEach(arg => {
             const a = arg.toLowerCase();
-            if (a === 'all') bet = Math.min(authorData.cash, 300000);
+            if (a === 'all') bet = authorData.cash;
             else if (!isNaN(a)) bet = parseInt(a);
             else if (a === 'h') side = 'heads';
             else if (a === 't') side = 'tails';
@@ -424,7 +421,8 @@ if (command === 'csend') {
             }
         }, 2500);
     }
-// ================= GAME HIGHLOW (shl) =================
+
+    // ================= GAME HIGHLOW (shl) =================
     if (command === 'shl') {
         if (checkCooldown(message.author.id, 'shl', message)) return;
 
@@ -433,12 +431,12 @@ if (command === 'csend') {
 
         args.forEach(arg => {
             const a = arg.toLowerCase();
-            if (a === 'all') bet = Math.min(authorData.cash, 300000); 
+            if (a === 'all') bet = authorData.cash;
             else if (!isNaN(a)) bet = parseInt(a);
         });
 
         if (bet === null) bet = 1000; 
-        if (bet > 300000) bet = 300000;
+        if (bet > 300000) bet = 300000; 
         if (bet <= 0) return message.reply('❌ Masukkan jumlah taruhan yang valid!');
         if (authorData.cash < bet) return message.reply(`❌ Saldo cash kamu tidak mencukupi untuk bertaruh **${bet.toLocaleString()}** cash.`);
 
@@ -467,42 +465,41 @@ if (command === 'csend') {
             let currentCashOut = streak === 0 ? 0 : Math.floor(bet * Math.pow(1.45, streak));
             let currentMultiplier = streak === 0 ? 0.00 : Math.pow(1.45, streak);
 
-            // Teks Info dengan desain Garis Persis di gambar
-            const infoHeader = `Bet: ${bet.toLocaleString()}  Streak: ${streak}  Cash Out: ${currentCashOut.toLocaleString()} (${currentMultiplier.toFixed(2)}x)\n──────────────────────────────────────`;
-
-            let cardDisplayPath = cardHistory.map(c => c.emoji).join(' ‣ ');
-            
-            // Kartu ketiga (next card) selalu tertutup selama main/loading
-            if (statusType === 'playing' || statusType === 'loading') {
-                cardDisplayPath += ` ‣ ${cardbackEmoji}`;
-            } else if (statusType === 'lost' && revealedCard) {
-                cardDisplayPath += ` ‣ ${revealedCard.emoji}`;
+            // Logika display kartu: Menampilkan maksimum 3 kartu layaknya foto [Past] -> [Current] -> [Face Down]
+            let displayCards = cardHistory.slice(-2).map(c => c.emoji);
+            if (statusType === 'playing') {
+                displayCards.push(cardbackEmoji);
+            } else if (revealedCard) {
+                displayCards.push(revealedCard.emoji);
+            } else if (statusType === 'cashed_out') {
+                // Generate 1 random card to reveal visually upon cashing out
+                let randNext = drawCard();
+                while (randNext.value > 12) randNext = drawCard();
+                displayCards.push(randNext.emoji);
             }
-
-            let textBody = `\n\n${cardDisplayPath}`;
             
-            // Teks bawah disesuaikan agar sama persis seperti gambar
-            if (statusType === 'cashed_out') {
-                 textBody += `\n\nYou cashed out with **${currentCashOut.toLocaleString()}** cash!\nCurrent Card: ${currentCard.value}`;
+            let cardDisplayPath = displayCards.join(' ‣ ');
+
+            // Tampilan info header menggunakan ────────
+            const infoHeader = `────────\n**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n────────`;
+
+            const embed = new EmbedBuilder();
+            
+            if (statusType === 'playing') {
+                embed.setColor('#5865F2')
+                     .setDescription(`🃏 <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nIs the next card higher or lower?\n### Current Card: ${currentCard.value}`);
             } else if (statusType === 'lost') {
-                 textBody += `\n\nYou guessed ${selectedChoice}. You lost.\nCurrent Card: ${revealedCard.value}`;
-            } else {
-                 textBody += `\n\nIs the next card higher or lower?\nCurrent Card: ${currentCard.value}`;
+                embed.setColor('#ED4245')
+                     .setDescription(`👎 <@${message.author.id}> **guessed incorrectly!!**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nYou guessed **${selectedChoice}**. You lost.\n### Current Card: ${revealedCard.value}`);
+            } else if (statusType === 'cashed_out') {
+                embed.setColor('#57F287')
+                     .setDescription(`<:cash:1520734986674765974> <@${message.author.id}> **Cashed Out!**\n${infoHeader}\n\n## ${cardDisplayPath}\n\nYou cashed out with **${currentCashOut.toLocaleString()}** cowoncy!\n### Current Card: ${currentCard.value}`);
             }
-
-            let headerText = '';
-            if (statusType === 'playing') headerText = `🃏 <@${message.author.id}> **started a HighLow game.**`;
-            if (statusType === 'lost') headerText = `👎 <@${message.author.id}> **guessed incorrectly!!**`;
-            if (statusType === 'cashed_out') headerText = `💰 <@${message.author.id}> **cashed out!**`;
-            if (statusType === 'loading') headerText = `<a:31830redloading:1520420716003196978> <@${message.author.id}> **started a HighLow game.**`;
-
-            const embed = new EmbedBuilder()
-                .setDescription(`${headerText}\n${infoHeader}${textBody}`);
 
             const nextHigherProfit = getNextProfit(currentCard.value, 'higher');
             const nextLowerProfit = getNextProfit(currentCard.value, 'lower');
 
-            const isFinished = statusType !== 'playing' && statusType !== 'loading';
+            const isFinished = statusType !== 'playing';
 
             const rowButtons = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -525,19 +522,13 @@ if (command === 'csend') {
                     .setDisabled(streak === 0 || isFinished)
             );
 
-            if (statusType === 'playing') embed.setColor('#5865F2');
-            if (statusType === 'loading') embed.setColor('#2F3136');
-            if (statusType === 'lost') embed.setColor('#ED4245');
-            if (statusType === 'cashed_out') embed.setColor('#57F287');
-            
             return { embeds: [embed], components: [rowButtons, rowCashout] };
         }
 
         const msg = await message.reply(generateGameMessage('playing'));
         
         const collector = msg.createMessageComponentCollector({
-            filter: i => i.user.id === message.author.id,
-            time: 60000 
+            filter: i => i.user.id === message.author.id
         });
 
         collector.on('collect', async i => {
@@ -552,33 +543,58 @@ if (command === 'csend') {
                 return i.update(generateGameMessage('cashed_out'));
             }
 
-            await i.update(generateGameMessage('loading'));
+            // Animasi Loading
+            let displayCards = cardHistory.slice(-2).map(c => c.emoji);
+            displayCards.push('<a:loadings:1520313495537586237>');
+            let cardDisplayPath = displayCards.join(' ‣ ');
+            
+            let currentCashOut = streak === 0 ? 0 : Math.floor(bet * Math.pow(1.45, streak));
+            let currentMultiplier = streak === 0 ? 0.00 : Math.pow(1.45, streak);
+            const infoHeader = `────────\n**Bet:** \`${bet.toLocaleString()}\`  **Streak:** \`${streak}\`  **Cash Out:** \`${currentCashOut.toLocaleString()}\` \`(${currentMultiplier.toFixed(2)}x)\`\n────────`;
+
+            const animEmbed = new EmbedBuilder()
+                .setColor('#2F3136')
+                .setDescription(`<a:31830redloading:1520420716003196978> <@${message.author.id}> **started a HighLow game.**\n${infoHeader}\n\n## ${cardDisplayPath}`);
+
+            await i.update({ embeds: [animEmbed], components: [] });
 
             setTimeout(async () => {
                 let isHigher = i.customId === 'hl_higher';
                 const currentCard = cardHistory[cardHistory.length - 1];
                 
-                // --- TRIK PERJUDIAN (RNG CASINO RIGGING) ---
-                let possibleCards = deckTemplate.filter(c => c.value <= 12 && c.value !== currentCard.value);
-                let winningCards = possibleCards.filter(c => isHigher ? c.value > currentCard.value : c.value < currentCard.value);
-                let losingCards = possibleCards.filter(c => isHigher ? c.value < currentCard.value : c.value > currentCard.value);
+                // SISTEM TRIK JUDI KASINO 80/20%
+                let isSmall = currentCard.value <= 6;
+                let isBig = currentCard.value > 6;
+                let forceDirection;
+                let rand = Math.random();
 
-                let nextCard;
-                // Ada 65% kemungkinan bot akan memprioritaskan mengambil dari tumpukan kartu yang membuat player KALAH 
-                // (Dengan syarat kartu kekalahan itu memang masih tersedia kemungkinannya)
-                if (losingCards.length > 0 && Math.random() < 0.65) {
-                    nextCard = losingCards[Math.floor(Math.random() * losingCards.length)];
+                if (isSmall) {
+                    forceDirection = rand < 0.80 ? 'higher' : 'lower';
+                } else if (isBig) {
+                    forceDirection = rand < 0.80 ? 'lower' : 'higher';
                 } else {
-                    nextCard = possibleCards[Math.floor(Math.random() * possibleCards.length)]; // Pengambilan murni normal
+                    forceDirection = rand < 0.50 ? 'higher' : 'lower';
                 }
-                // ---------------------------------------------
 
+                let possibleCards = deckTemplate.filter(c => c.value <= 12 && c.value !== currentCard.value);
+                
+                let validCards = possibleCards.filter(c => 
+                    forceDirection === 'higher' ? c.value > currentCard.value : c.value < currentCard.value
+                );
+                
+                // Jika tidak ada kartu yang valid untuk dipaksa (fallback), gunakan sisi sebaliknya
+                if (validCards.length === 0) {
+                    validCards = possibleCards.filter(c => 
+                        forceDirection === 'higher' ? c.value < currentCard.value : c.value > currentCard.value
+                    );
+                }
+
+                let nextCard = validCards[Math.floor(Math.random() * validCards.length)];
                 let isWon = isHigher ? (nextCard.value > currentCard.value) : (nextCard.value < currentCard.value);
 
                 if (isWon) {
                     streak++;
                     cardHistory.push(nextCard);
-                    // Kemenangan tidak dibatasi (No Max Win Limit)
                     await msg.edit(generateGameMessage('playing'));
                 } else {
                     collector.stop('lost');
@@ -586,14 +602,7 @@ if (command === 'csend') {
                 }
             }, 1000);
         });
-
-        collector.on('end', (collected, reason) => {
-             if(reason === 'time') {
-                  msg.edit({components: []}).catch(()=>{});
-             }
-        });
     }
-
 
     // ================= PVP INVITE: MINES (smine inv) =================
     if (command === 'smine' && args[0]?.toLowerCase() === 'inv') {
@@ -730,7 +739,7 @@ if (command === 'csend') {
         let bet = null;
         args.forEach(arg => {
             const a = arg.toLowerCase();
-            if (a === 'all') bet = Math.min(authorData.cash, 300000);
+            if (a === 'all') bet = authorData.cash;
             else if (!isNaN(a)) bet = parseInt(a);
         });
 
@@ -791,7 +800,7 @@ if (command === 'csend') {
         let bet = null;
         args.forEach(arg => {
             const a = arg.toLowerCase();
-            if (a === 'all') bet = Math.min(authorData.cash, 300000);
+            if (a === 'all') bet = authorData.cash;
             else if (!isNaN(a)) bet = parseInt(a);
         });
         
