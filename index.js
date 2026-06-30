@@ -304,7 +304,7 @@ client.on('messageCreate', async (message) => {
             const dealerScore = calculateScore(dealerHand);
             const playerEmojis = playerHand.map(c => c.emoji).join(' ');
             
-            let dealerDisplayScore = status === 'playing' ? `[${dealerHand[0].value}+?]` : `[${dealerScore}]`;
+            let dealerDisplayScore = status === 'playing' ? ``[${dealerHand[0].value}+?]`` : ``[${dealerScore}]``;
             let dealerEmojis = status === 'playing' ? `${dealerHand[0].emoji} ${EMOJI_CARDBACK}` : dealerHand.map(c => c.emoji).join(' ');
             
             let resultText = '';
@@ -455,7 +455,7 @@ client.on('messageCreate', async (message) => {
         const cardbackEmoji = EMOJI_CARDBACK;
         
         // Konstanta garis pemisah yang rapi
-        const hlDivider = '─'.repeat(40);
+        const hlDivider = '_'.repeat(40);
 
         const getNextProfit = (currentValue, type) => {
             let chance = type === 'higher' ? (13 - currentValue) / 12 : (currentValue - 1) / 12;
