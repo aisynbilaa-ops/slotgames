@@ -304,7 +304,7 @@ client.on('messageCreate', async (message) => {
             const dealerScore = calculateScore(dealerHand);
             const playerEmojis = playerHand.map(c => c.emoji).join(' ');
             
-            let dealerDisplayScore = status === 'playing' ? ``[${dealerHand[0].value}+?]` : ``[${dealerScore}]`;
+            let dealerDisplayScore = status === 'playing' ? `[${dealerHand[0].value}+?]` : `[${dealerScore}]`;
             let dealerEmojis = status === 'playing' ? `${dealerHand[0].emoji} ${EMOJI_CARDBACK}` : dealerHand.map(c => c.emoji).join(' ');
             
             let resultText = '';
@@ -318,7 +318,7 @@ client.on('messageCreate', async (message) => {
             return new EmbedBuilder()
                 .setAuthor({ name: `${message.author.username}, you bet ${bet} to play blackjack`, iconURL: message.author.displayAvatarURL() })
                 .setColor(color)
-                .setDescription(`**Dealer ${dealerDisplayScore}**\n${dealerEmojis}\n\n**${message.author.username} [${playerScore}]**\n${playerEmojis}${resultText}${statusText}`);
+                .setDescription(`**Dealer `${dealerDisplayScore}`**\n${dealerEmojis}\n\n**${message.author.username} `[${playerScore}]`**\n${playerEmojis}${resultText}${statusText}`);
         };
 
         const msg = await message.reply({ embeds: [generateEmbed('playing', '#0099ff')] });
